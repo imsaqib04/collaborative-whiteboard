@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pro Whiteboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        body { font-family: sans-serif; background: #e0e0e0; text-align: center; }
+
+        /* Toolbar Design */
+        .toolbar {
+            background: white; padding: 10px; border-radius: 8px;
+            display: inline-flex; align-items: center; gap: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 10px;
+        }
+
+        canvas {
+            background: white; cursor: crosshair;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            border-radius: 4px; touch-action: none; /* Mobile scroll band karne ke liye */
+        }
+
+        .tool-group { display: flex; flex-direction: column; align-items: center; font-size: 12px; }
+        input[type="color"] { border: none; width: 40px; height: 40px; cursor: pointer; }
+        button { padding: 8px 12px; cursor: pointer; border: none; background: #007bff; color: white; border-radius: 4px; }
+        button.eraser { background: #ffc107; color: black; }
+        button.clear { background: #dc3545; }
+    </style>
+</head>
+<body>
+
+<h2>🎨 Collaborative Whiteboard</h2>
+
+<div class="toolbar">
+    <div class="tool-group">
+        <label>Color</label>
+        <input type="color" id="colorPicker" value="#000000">
+    </div>
+
+    <div class="tool-group">
+        <label>Size</label>
+        <input type="range" id="brushSize" min="1" max="20" value="3">
+    </div>
+
+    <button class="eraser" onclick="setEraser()">🧽 Eraser</button>
+    <button class="clear" onclick="clearBoard()">🗑 Clear All</button>
+</div>
+
+<br>
+<canvas id="board" width="900" height="500"></canvas>
+
+<script>
+    var stompClient = null;
+    var canvas = document.getElementById('board');
+    var ctx = canvas.getContext('2d');
+
+    // State Variables
+    var isDrawing = false;
+    var lastX = 0;
+    var lastY = 0;
+    var currentColor = "#000000";
+    var currentWidth = 3;
+
+    // --- 1. Connection Logic ---
+    function connect() {
+        var socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+        stompClient.connect({}, function (frame) {
+            console.log('Connected');
+            stompClient.subscribe('/topic/board', function (message) {
+                var payload = JSON.parse(message.body);
+                drawOnCanvas(payload);
+            });
+        });
+    }
+
+    // --- 2. Drawing Events (Mouse + Touch for Mobile) ---
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+
+    function startDrawing(e) {
+        isDrawing = true;
+        [lastX, lastY] = [e.offsetX, e.offsetY]; // Start point save karo
+    }
+
+    function draw(e) {
+        if (!isDrawing) return;
+
+        // Naya point
+        let newX = e.offsetX;
+        let newY = e.offsetY;
+
+        // Server ko bhejo: "Main Old(x,y) se New(x,y) tak gaya"
+        var drawData = {
+            'type': 'draw',
+            'oldX': lastX,
+            'oldY': lastY,
+            'newX': newX,
+            'newY': newY,
+            'color': currentColor,
+            'width': currentWidth
+        };
+
+        if(stompClient && stompClient.connected) {
+            stompClient.send("/app/draw", {}, JSON.stringify(drawData));
+        }
+
+        // Local coordinates update karo agle step ke liye
+        [lastX, lastY] = [newX, newY];
+    }
+
+    function stopDrawing() {
+        isDrawing = false;
+    }
+
+    // --- 3. Rendering Logic (Receiver) ---
+    function drawOnCanvas(data) {
+        if (data.type === 'clear') {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        } else {
+            ctx.beginPath();
+            ctx.moveTo(data.oldX, data.oldY); // Yahan se shuru
+            ctx.lineTo(data.newX, data.newY); // Yahan tak line
+            ctx.strokeStyle = data.color;
+            ctx.lineWidth = data.width;
+            ctx.lineCap = 'round'; // Smooth edges
+            ctx.stroke();
+        }
+    }
+
+    // --- 4. Tool Functions ---
+    document.getElementById('colorPicker').addEventListener('change', (e) => {
+        currentColor = e.target.value;
+    });
+
+    document.getElementById('brushSize').addEventListener('change', (e) => {
+        currentWidth = e.target.value;
+    });
+
+    function setEraser() {
+        currentColor = "#FFFFFF"; // Eraser = White color paint
+        currentWidth = 10;        // Eraser bada hona chahiye
+    }
+
+    function clearBoard() {
+        if(stompClient) {
+            stompClient.send("/app/draw", {}, JSON.stringify({ 'type': 'clear' }));
+        }
+    }
+
+    connect();
+</script>
+</body>
+</html>
