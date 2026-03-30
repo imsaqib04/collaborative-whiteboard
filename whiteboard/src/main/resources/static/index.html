@@ -3,114 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProBoard Live - Workspace</title>
+    <title>ProBoard Live - Fullscreen Workspace</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
 
     <style>
         :root {
-            --primary: #3b82f6;
-            --primary-hover: #2563eb;
-            --bg-color: #f3f4f6;
-            --surface: #ffffff;
-            --text-main: #111827;
-            --text-muted: #6b7280;
-            --border: #e5e7eb;
-
-            /* Dark Theme Colors */
-            --dark-bg: #0f172a;
-            --dark-card: #1e293b;
-            --dark-input: #0f172a;
-            --dark-border: #334155;
-            --dark-text: #f8fafc;
-            --dark-muted: #94a3b8;
+            --primary: #3b82f6; --primary-hover: #2563eb;
+            --bg-color: #f8fafc; --surface: #ffffff;
+            --text-main: #0f172a; --text-muted: #64748b; --border: #e2e8f0;
+            --dark-bg: #0f172a; --dark-card: #1e293b; --dark-input: #0f172a;
+            --dark-border: #334155; --dark-text: #f8fafc; --dark-muted: #94a3b8;
         }
 
-        * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
-        body { background: var(--bg-color); color: var(--text-main); margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+        * { box-sizing: border-box; font-family: 'Inter', sans-serif; margin: 0; padding: 0; }
+        body { background: var(--bg-color); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 
-        /* --- ✨ SMART LOGIN SCREEN --- */
-        #login-screen { display: flex; justify-content: center; align-items: center; height: 100vh; width: 100%; background: var(--dark-bg); }
-        .login-wrapper { display: flex; flex-direction: row; background: var(--dark-card); border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); width: 100%; max-width: 900px; min-height: 500px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); }
+        /* --- LOGIN SCREEN --- */
+        #login-screen { display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; background: var(--dark-bg); position: fixed; top: 0; left: 0; z-index: 9999; }
+        .login-wrapper { display: flex; flex-direction: row; background: var(--dark-card); border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); width: 100%; max-width: 850px; min-height: 480px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); }
+        .login-left { background: linear-gradient(135deg, #3b82f6 0%, #0284c7 100%); width: 40%; padding: 40px; color: white; display: flex; flex-direction: column; justify-content: center; position: relative; }
+        .login-left h2 { font-size: 28px; font-weight: 700; margin-bottom: 15px; }
+        .login-left p { font-size: 15px; line-height: 1.5; opacity: 0.9; }
+        .illustration { font-size: 60px; text-align: center; margin-top: 30px; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.2)); }
+        .login-right { padding: 40px; width: 60%; color: var(--dark-text); display: flex; flex-direction: column; justify-content: center; }
+        .login-right h3 { font-size: 24px; font-weight: 700; margin-bottom: 20px; color: white; }
 
-        .login-left { background: linear-gradient(135deg, #3b82f6 0%, #0284c7 100%); width: 45%; padding: 50px; color: white; display: flex; flex-direction: column; justify-content: center; position: relative; }
-        .login-left h2 { font-size: 32px; font-weight: 700; margin-bottom: 20px; margin-top: 0; line-height: 1.2; }
-        .login-left p { font-size: 16px; line-height: 1.6; opacity: 0.9; margin-bottom: 30px; }
-        .illustration { font-size: 70px; text-align: center; margin-top: 20px; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.2)); }
-
-        .login-right { padding: 50px; width: 55%; color: var(--dark-text); display: flex; flex-direction: column; justify-content: center; }
-        .login-right h3 { font-size: 28px; font-weight: 700; margin-top: 0; margin-bottom: 25px; color: white; }
-
-        /* 🚀 Tabs UI */
-        .tab-container { display: flex; background: var(--dark-bg); padding: 6px; border-radius: 12px; margin-bottom: 25px; }
-        .tab-btn { flex: 1; padding: 12px; border: none; background: transparent; color: var(--dark-muted); font-size: 14px; font-weight: 600; border-radius: 8px; cursor: pointer; transition: 0.3s; }
+        .tab-container { display: flex; background: var(--dark-bg); padding: 5px; border-radius: 10px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 10px; border: none; background: transparent; color: var(--dark-muted); font-size: 13px; font-weight: 600; border-radius: 6px; cursor: pointer; transition: 0.3s; }
         .tab-btn.active { background: var(--dark-card); color: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
 
-        .input-group { margin-bottom: 22px; text-align: left; }
-        .input-group label { display: block; margin-bottom: 10px; font-weight: 500; color: var(--dark-muted); font-size: 14px; }
-        .login-right input { width: 100%; padding: 15px 18px; background: var(--dark-input); border: 1px solid var(--dark-border); color: white; border-radius: 12px; font-size: 15px; transition: all 0.2s; outline: none; }
-        .login-right input::placeholder { color: #475569; }
+        .input-group { margin-bottom: 18px; text-align: left; }
+        .input-group label { display: block; margin-bottom: 8px; font-weight: 500; color: var(--dark-muted); font-size: 13px; }
+        .login-right input { width: 100%; padding: 12px 15px; background: var(--dark-input); border: 1px solid var(--dark-border); color: white; border-radius: 10px; font-size: 14px; transition: all 0.2s; outline: none; }
         .login-right input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.25); background: #1e293b; }
-
-        .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; cursor: pointer; font-size: 15px; font-weight: 600; transition: all 0.2s; letter-spacing: 0.5px; color: white; margin-top: 10px; }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s; color: white; margin-top: 5px; }
         .btn-action { background: var(--primary); box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3); }
         .btn-action:hover { background: var(--primary-hover); transform: translateY(-2px); }
 
-        /* --- BOARD AREA & HEADER --- */
-        #board-area { display: none; width: 100%; padding: 20px; max-width: 1400px; }
-        .header-bar { display: flex; justify-content: space-between; align-items: center; background: var(--surface); padding: 15px 25px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .brand-title { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: #1e293b; }
-        .brand-title span { background: #e0e7ff; color: var(--primary); padding: 4px 10px; border-radius: 8px; font-size: 14px; }
+        /* --- UNIFIED CONCISE TOP BAR --- */
+        #board-area { display: none; height: 100vh; width: 100vw; flex-direction: column; }
 
-        .header-info { display: flex; align-items: center; gap: 20px; font-size: 14px; font-weight: 600; color: #475569; }
-        .info-pill { background: #f8fafc; padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border); }
-        .role-badge { font-size: 11px; background: #fbbf24; color: #78350f; padding: 3px 8px; border-radius: 10px; margin-left: 8px; font-weight: 700; text-transform: uppercase; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; background: var(--surface); padding: 8px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); z-index: 100; height: 60px; border-bottom: 1px solid var(--border); }
+        .brand-section { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; color: #1e293b; width: 20%; }
+        .brand-section span.live { background: #fee2e2; color: #ef4444; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; text-transform: uppercase; animation: pulse 2s infinite; }
 
-        .leave-btn { background: #fee2e2; color: #ef4444; border: 1px solid #fca5a5; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.2s; display: flex; align-items: center; gap: 6px; }
-        .leave-btn:hover { background: #ef4444; color: white; }
-
-        /* --- TOOLBAR --- */
-        .toolbar { background: var(--surface); padding: 12px 24px; border-radius: 100px; display: inline-flex; align-items: center; gap: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .tool-group { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
-        input[type="color"] { border: none; width: 32px; height: 32px; cursor: pointer; padding: 0; border-radius: 50%; overflow: hidden; }
+        .tools-section { display: flex; align-items: center; gap: 10px; background: #f1f5f9; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--border); }
+        input[type="color"] { border: none; width: 28px; height: 28px; cursor: pointer; padding: 0; border-radius: 50%; overflow: hidden; }
         input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
         input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
-        input[type="range"] { accent-color: var(--primary); }
+        input[type="range"] { width: 80px; accent-color: var(--primary); }
+        .tool-btn { padding: 6px 12px; cursor: pointer; border: none; background: transparent; color: var(--text-muted); border-radius: 6px; font-size: 13px; font-weight: 600; transition: 0.2s; display: flex; align-items: center; gap: 4px; }
+        .tool-btn:hover { background: #e2e8f0; color: var(--text-main); }
+        .tool-btn.active { background: white; color: var(--primary); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .divider-vertical { width: 1px; height: 18px; background: #cbd5e1; margin: 0 5px; }
 
-        button.tool-btn { padding: 8px 16px; cursor: pointer; border: 1px solid transparent; background: transparent; color: var(--text-main); border-radius: 20px; font-size: 14px; font-weight: 600; transition: 0.2s; display: flex; align-items: center; gap: 6px; }
-        button.tool-btn:hover { background: #f3f4f6; }
-        button.tool-btn.active { background: #e0e7ff; color: var(--primary); border-color: #c7d2fe; }
-        .divider-vertical { width: 1px; height: 24px; background: var(--border); }
+        .info-actions { display: flex; align-items: center; gap: 12px; width: 30%; justify-content: flex-end; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+        .room-badge { background: #e0e7ff; color: var(--primary); padding: 5px 10px; border-radius: 6px; border: 1px dashed #a5b4fc; user-select: all; }
+        .user-badge { display: flex; align-items: center; gap: 5px; }
+        .role-host { font-size: 10px; background: #fbbf24; color: #78350f; padding: 2px 6px; border-radius: 4px; }
 
-        /* --- WORKSPACE LAYOUT --- */
-        .workspace-container { display: flex; gap: 24px; justify-content: center; align-items: stretch; height: calc(100vh - 180px); min-height: 500px; }
+        .chat-toggle-btn { background: #f8fafc; border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 5px; transition: 0.2s; }
+        .chat-toggle-btn:hover { background: #e2e8f0; }
+        .chat-toggle-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-        #canvas-container { flex: 1; position: relative; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); border: 1px solid var(--border); }
-        canvas { background-color: #ffffff; cursor: crosshair; display: block; background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px); background-size: 25px 25px; }
+        .leave-btn { background: #fee2e2; color: #ef4444; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: 0.2s; }
+        .leave-btn:hover { background: #ef4444; color: white; }
 
-        /* --- CHAT UI --- */
-        #chat-container { width: 340px; background: var(--surface); border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border); }
-        .chat-header { background: var(--surface); padding: 16px; font-weight: 700; font-size: 15px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; color: #1e293b; }
-        #chat-messages { flex: 1; padding: 20px; overflow-y: auto; background: #f9fafb; display: flex; flex-direction: column; gap: 12px; }
+        /* --- FULLSCREEN WORKSPACE --- */
+        .workspace-container { flex: 1; position: relative; display: flex; width: 100vw; overflow: hidden; }
+
+        /* 🔥 THE FIX: Solid Canvas Resolution */
+        #canvas-container { flex: 1; height: 100%; position: relative; }
+        canvas {
+            background-color: transparent; /* Allows CSS background to show */
+            cursor: crosshair;
+            display: block;
+            width: 100%; height: 100%; /* Stretch visually */
+            touch-action: none;
+            background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
+            background-size: 30px 30px;
+        }
+
+        /* --- FOLDABLE FLOATING CHAT --- */
+        #chat-container {
+            position: absolute; right: 20px; top: 20px; bottom: 20px; width: 320px;
+            background: var(--surface); border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            display: flex; flex-direction: column; border: 1px solid var(--border); z-index: 50;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+        }
+        #chat-container.folded { transform: translateX(120%); opacity: 0; pointer-events: none; }
+
+        .chat-header { background: #f8fafc; padding: 12px 16px; font-weight: 700; font-size: 14px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; border-radius: 12px 12px 0 0; }
+        .close-chat { cursor: pointer; color: var(--text-muted); border: none; background: none; font-size: 18px; line-height: 1; }
+        .close-chat:hover { color: #ef4444; }
+
+        #chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
         .chat-wrapper { display: flex; flex-direction: column; max-width: 85%; }
         .chat-wrapper.me { align-self: flex-end; align-items: flex-end; }
         .chat-wrapper.other { align-self: flex-start; align-items: flex-start; }
-        .chat-sender { font-size: 11px; font-weight: 600; margin-bottom: 4px; color: var(--text-muted); padding: 0 4px; }
-        .chat-bubble { padding: 10px 14px; border-radius: 18px; font-size: 14px; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .chat-sender { font-size: 10px; font-weight: 600; margin-bottom: 3px; color: var(--text-muted); padding: 0 4px; }
+        .chat-bubble { padding: 8px 12px; border-radius: 14px; font-size: 13px; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
         .chat-wrapper.me .chat-bubble { background: var(--primary); color: white; border-bottom-right-radius: 4px; }
-        .chat-wrapper.other .chat-bubble { background: white; color: var(--text-main); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
-        .chat-input-area { display: flex; padding: 12px; background: var(--surface); border-top: 1px solid var(--border); gap: 8px; }
-        .chat-input-area input { flex: 1; padding: 12px 16px; border: 1px solid var(--border); border-radius: 24px; outline: none; font-size: 14px; background: #f9fafb; transition: 0.2s; }
-        .chat-input-area input:focus { border-color: var(--primary); background: white; }
-        .chat-input-area button { padding: 0 20px; background: var(--primary); color: white; border: none; border-radius: 24px; cursor: pointer; font-weight: 600; transition: 0.2s; }
-        .chat-input-area button:hover { background: var(--primary-hover); }
+        .chat-wrapper.other .chat-bubble { background: #f1f5f9; color: var(--text-main); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
 
-        .remote-cursor { position: absolute; pointer-events: none; font-size: 12px; font-weight: 600; color: white; background: var(--primary); padding: 4px 10px; border-radius: 12px; border-top-left-radius: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: top 0.1s, left 0.1s; transform: translate(5px, 5px); z-index: 100; }
-        #toast-container { position: fixed; top: 24px; right: 24px; z-index: 1000; display: flex; flex-direction: column; gap: 12px; }
-        .toast { background: #1e293b; color: white; padding: 14px 20px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2); display: flex; justify-content: space-between; align-items: center; min-width: 280px; font-size: 14px; font-weight: 500; animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; border-left: 4px solid var(--primary); }
-        .toast .close-btn { cursor: pointer; font-size: 18px; opacity: 0.7; transition: 0.2s; margin-left: 15px; }
-        .toast .close-btn:hover { opacity: 1; }
+        .chat-input-area { display: flex; padding: 10px; background: white; border-top: 1px solid var(--border); gap: 8px; border-radius: 0 0 12px 12px; }
+        .chat-input-area input { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 20px; outline: none; font-size: 13px; background: #f8fafc; }
+        .chat-input-area input:focus { border-color: var(--primary); background: white; }
+        .chat-input-area button { padding: 0 16px; background: var(--primary); color: white; border: none; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 13px; }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .remote-cursor { position: absolute; pointer-events: none; font-size: 11px; font-weight: 600; color: white; background: var(--primary); padding: 3px 8px; border-radius: 10px; border-top-left-radius: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: top 0.1s, left 0.1s; transform: translate(5px, 5px); z-index: 100; }
+
+        #toast-container { position: fixed; top: 70px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background: #1e293b; color: white; padding: 12px 16px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; justify-content: space-between; align-items: center; min-width: 240px; font-size: 13px; font-weight: 500; animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; border-left: 3px solid var(--primary); }
+        .toast .close-btn { cursor: pointer; font-size: 16px; opacity: 0.7; margin-left: 10px; }
         @keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     </style>
 </head>
@@ -121,62 +129,60 @@
 <div id="login-screen">
     <div class="login-wrapper">
         <div class="login-left">
-            <h2>Welcome to ProBoard</h2>
-            <p>Your instant real-time collaborative whiteboard. Fast, low-friction, and securely backed by Redis & MySQL.</p>
+            <h2>ProBoard Live</h2>
+            <p>Fast, low-friction, and securely backed by Redis & MySQL.</p>
             <div class="illustration">📱👨‍💻</div>
         </div>
-
         <div class="login-right">
             <h3>Start a Session</h3>
-
             <div class="tab-container">
                 <button class="tab-btn active" id="tabCreate" onclick="switchMode('create')">Create Room</button>
                 <button class="tab-btn" id="tabJoin" onclick="switchMode('join')">Join Room</button>
             </div>
-
             <div class="input-group">
                 <label>Username</label>
                 <input type="text" id="userNameInput" placeholder="e.g. Saqib" required>
             </div>
-
             <div class="input-group" id="roomCodeGroup" style="display: none;">
                 <label>Room Code</label>
                 <input type="text" id="roomCodeInput" placeholder="Enter 6-digit code" style="text-transform: uppercase; letter-spacing: 2px;">
             </div>
-
             <button class="btn btn-action" id="actionBtn" onclick="handleAuthAction()">CREATE NEW ROOM</button>
         </div>
     </div>
 </div>
 
 <div id="board-area">
-    <div class="header-bar">
-        <div class="brand-title">✏️ ProBoard <span>Live</span></div>
-        <div class="header-info">
-            <div class="info-pill">👥 Online: <span id="userCountDisplay" style="color: var(--primary);">1</span></div>
-            <div class="info-pill">🔑 Room: <span id="displayRoomCode" style="color: var(--primary); user-select: all; letter-spacing: 1px;"></span></div>
-            <div class="info-pill">👤 <span id="displayUserName"></span><span id="roleBadge"></span></div>
-            <button class="leave-btn" onclick="leaveRoom()">🚪 End Session</button>
+    <div class="top-bar">
+        <div class="brand-section">✏️ ProBoard <span class="live">Live</span></div>
+        <div class="tools-section">
+            <input type="color" id="colorPicker" title="Color">
+            <div class="divider-vertical"></div>
+            <span style="font-size: 12px; color: #64748b; font-weight: 600;">Size</span>
+            <input type="range" id="brushSize" min="1" max="20" value="3">
+            <div class="divider-vertical"></div>
+            <button class="tool-btn active" id="penBtn" onclick="setPen()">✏️ Pen</button>
+            <button class="tool-btn" id="eraserBtn" onclick="setEraser()">🧽 Eraser</button>
+            <div class="divider-vertical"></div>
+            <button id="clearBtn" class="tool-btn" onclick="clearBoard()" style="color: #ef4444;">🗑 Clear</button>
+            <button class="tool-btn" onclick="downloadBoard()" style="color: #10b981;">⬇ Save PNG</button>
+        </div>
+        <div class="info-actions">
+            <span>👥 <span id="userCountDisplay" style="color: var(--primary);">1</span></span>
+            <span class="room-badge">🔑 <span id="displayRoomCode"></span></span>
+            <div class="user-badge"><span id="displayUserName"></span><span id="roleBadge"></span></div>
+            <button id="chatToggleBtn" class="chat-toggle-btn active" onclick="toggleChat()">💬 Chat</button>
+            <button class="leave-btn" onclick="leaveRoom()">🚪 End</button>
         </div>
     </div>
 
-    <div class="toolbar">
-        <div class="tool-group"><input type="color" id="colorPicker"></div>
-        <div class="divider-vertical"></div>
-        <div class="tool-group">Size <input type="range" id="brushSize" min="1" max="20" value="3"></div>
-        <div class="divider-vertical"></div>
-        <button class="tool-btn active" id="penBtn" onclick="setPen()">✏️ Pen</button>
-        <button class="tool-btn" id="eraserBtn" onclick="setEraser()">🧽 Eraser</button>
-        <div class="divider-vertical"></div>
-        <button id="clearBtn" class="tool-btn" onclick="clearBoard()" style="color: #ef4444;">🗑 Clear All</button>
-        <button class="tool-btn" onclick="downloadBoard()" style="color: #10b981;">⬇ Save PNG</button>
-    </div>
-
     <div class="workspace-container">
-        <div id="canvas-container"><canvas id="board"></canvas></div>
+        <div id="canvas-container">
+            <canvas id="board" width="1920" height="1080"></canvas>
+        </div>
 
         <div id="chat-container">
-            <div class="chat-header">💬 Live Discussion</div>
+            <div class="chat-header"><span>💬 Live Discussion</span><button class="close-chat" onclick="toggleChat()">×</button></div>
             <div id="chat-messages"></div>
             <div class="chat-input-area">
                 <input type="text" id="chatInput" placeholder="Type a message..." onkeypress="handleEnter(event)">
@@ -187,9 +193,8 @@
 </div>
 
 <script>
-    // --- 🚀 NEW DYNAMIC LOGIN LOGIC ---
+    // --- LOGIN & CHAT LOGIC ---
     let currentMode = 'create';
-
     function switchMode(mode) {
         currentMode = mode;
         const codeGroup = document.getElementById('roomCodeGroup');
@@ -198,41 +203,31 @@
         const tabJoin = document.getElementById('tabJoin');
 
         if (mode === 'create') {
-            tabJoin.classList.remove('active');
-            tabCreate.classList.add('active');
-            codeGroup.style.display = 'none';
-            actionBtn.innerText = 'CREATE NEW ROOM';
-            actionBtn.style.backgroundColor = 'var(--primary)';
+            tabJoin.classList.remove('active'); tabCreate.classList.add('active');
+            codeGroup.style.display = 'none'; actionBtn.innerText = 'CREATE NEW ROOM'; actionBtn.style.backgroundColor = 'var(--primary)';
         } else {
-            tabCreate.classList.remove('active');
-            tabJoin.classList.add('active');
-            codeGroup.style.display = 'block';
-            actionBtn.innerText = 'JOIN EXISTING ROOM';
-            actionBtn.style.backgroundColor = '#10b981'; // Green for join
+            tabCreate.classList.remove('active'); tabJoin.classList.add('active');
+            codeGroup.style.display = 'block'; actionBtn.innerText = 'JOIN EXISTING ROOM'; actionBtn.style.backgroundColor = '#10b981';
+        }
+    }
+    function handleAuthAction() { if (currentMode === 'create') { createRoom(); } else { joinRoom(); } }
+
+    let isChatOpen = true;
+    function toggleChat() {
+        const chatPanel = document.getElementById('chat-container');
+        const toggleBtn = document.getElementById('chatToggleBtn');
+        isChatOpen = !isChatOpen;
+        if(isChatOpen) {
+            chatPanel.classList.remove('folded'); toggleBtn.classList.add('active');
+        } else {
+            chatPanel.classList.add('folded'); toggleBtn.classList.remove('active');
         }
     }
 
-    function handleAuthAction() {
-        if (currentMode === 'create') {
-            createRoom();
-        } else {
-            joinRoom();
-        }
-    }
-
-    // --- STANDARD WEBSOCKET & CANVAS LOGIC ---
+    // --- WEBSOCKET & CANVAS LOGIC ---
     var stompClient = null;
     var canvas = document.getElementById('board');
     var ctx = canvas.getContext('2d');
-
-    function resizeCanvas() {
-        var container = document.getElementById('canvas-container');
-        canvas.width = container.clientWidth;
-        canvas.height = container.clientHeight;
-    }
-    window.addEventListener('resize', () => {
-        if(document.getElementById('board-area').style.display === 'block') {}
-    });
 
     var myName = ""; var roomCode = ""; var userRole = "GUEST";
     var isDrawing = false; var lastX = 0; var lastY = 0;
@@ -284,8 +279,8 @@
 
     function enterWorkspace() {
         document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('board-area').style.display = 'block';
-        resizeCanvas();
+        document.getElementById('board-area').style.display = 'flex';
+
         document.getElementById('displayRoomCode').innerText = roomCode;
         document.getElementById('displayUserName').innerText = myName;
 
@@ -294,7 +289,7 @@
         currentColor = getRandomDarkColor(); document.getElementById('colorPicker').value = currentColor;
 
         if (userRole === "GUEST") { document.getElementById('clearBtn').style.display = 'none'; }
-        else { document.getElementById('roleBadge').className = 'role-badge'; document.getElementById('roleBadge').innerText = 'HOST'; }
+        else { document.getElementById('roleBadge').className = 'role-host'; document.getElementById('roleBadge').innerText = 'HOST'; }
 
         activeUsers.add(myName); updateUserCount(); connectToServer();
     }
@@ -338,7 +333,10 @@
                 sessionStorage.clear(); if(stompClient) stompClient.disconnect(); window.location.reload();
             }
         }
-        else if (data.type === 'CHAT') { displayChatMessage(data.senderName, data.text); }
+        else if (data.type === 'CHAT') {
+            displayChatMessage(data.senderName, data.text);
+            if(!isChatOpen && data.senderName !== myName) { showToast("💬 New message from " + data.senderName); }
+        }
         else if (data.type === 'cursor') { updateRemoteCursor(data); }
         else if (data.type === 'draw' || data.type === 'clear') { drawOnCanvas(data); }
     }
@@ -385,20 +383,33 @@
         cursorEl.hideTimer = setTimeout(() => { cursorEl.style.opacity = 0; }, 2000);
     }
 
+    // --- 🔥 FIX: Original Stable Coordinate Logic ---
     canvas.addEventListener('mousedown', startDrawing); canvas.addEventListener('mousemove', handleMouseMove);
     canvas.addEventListener('mouseup', stopDrawing); canvas.addEventListener('mouseout', stopDrawing);
 
     function startDrawing(e) {
-        isDrawing = true; const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width; const scaleY = canvas.height / rect.height;
-        lastX = (e.clientX - rect.left) * scaleX; lastY = (e.clientY - rect.top) * scaleY;
+        isDrawing = true;
+        const rect = canvas.getBoundingClientRect();
+        // ScaleX/Y wapas laga diya taaki mouse aur drawing 100% sync ho
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        lastX = (e.clientX - rect.left) * scaleX;
+        lastY = (e.clientY - rect.top) * scaleY;
     }
 
     function handleMouseMove(e) {
-        const rect = canvas.getBoundingClientRect(); const scaleX = canvas.width / rect.width; const scaleY = canvas.height / rect.height;
-        let currentX = (e.clientX - rect.left) * scaleX; let currentY = (e.clientY - rect.top) * scaleY;
-        if (isDrawing) { sendData('draw', lastX, lastY, currentX, currentY); lastX = currentX; lastY = currentY; }
-        else { sendData('cursor', 0, 0, currentX, currentY); }
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        let currentX = (e.clientX - rect.left) * scaleX;
+        let currentY = (e.clientY - rect.top) * scaleY;
+
+        if (isDrawing) {
+            sendData('draw', lastX, lastY, currentX, currentY);
+            lastX = currentX; lastY = currentY;
+        } else {
+            sendData('cursor', 0, 0, currentX, currentY);
+        }
     }
 
     function stopDrawing() { isDrawing = false; }
@@ -423,7 +434,7 @@
     document.getElementById('brushSize').addEventListener('change', (e) => { currentWidth = e.target.value; });
 
     function setPen() { currentColor = document.getElementById('colorPicker').value; currentWidth = document.getElementById('brushSize').value; document.getElementById('penBtn').classList.add('active'); document.getElementById('eraserBtn').classList.remove('active'); }
-    function setEraser() { currentColor = "#FFFFFF"; currentWidth = 25; document.getElementById('eraserBtn').classList.add('active'); document.getElementById('penBtn').classList.remove('active'); }
+    function setEraser() { currentColor = "#FFFFFF"; currentWidth = 40; document.getElementById('eraserBtn').classList.add('active'); document.getElementById('penBtn').classList.remove('active'); }
     function clearBoard() { if(userRole === "HOST") { sendData('clear', 0, 0, 0, 0); } }
 
     function downloadBoard() {
