@@ -1,158 +1,436 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Pro Whiteboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProBoard Live - Workspace</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
-        body { font-family: sans-serif; background: #e0e0e0; text-align: center; }
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --bg-color: #f3f4f6;
+            --surface: #ffffff;
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
 
-        /* Toolbar Design */
-        .toolbar {
-            background: white; padding: 10px; border-radius: 8px;
-            display: inline-flex; align-items: center; gap: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 10px;
+            /* Dark Theme Colors */
+            --dark-bg: #0f172a;
+            --dark-card: #1e293b;
+            --dark-input: #0f172a;
+            --dark-border: #334155;
+            --dark-text: #f8fafc;
+            --dark-muted: #94a3b8;
         }
 
-        canvas {
-            background: white; cursor: crosshair;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            border-radius: 4px; touch-action: none; /* Mobile scroll band karne ke liye */
-        }
+        * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg-color); color: var(--text-main); margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
 
-        .tool-group { display: flex; flex-direction: column; align-items: center; font-size: 12px; }
-        input[type="color"] { border: none; width: 40px; height: 40px; cursor: pointer; }
-        button { padding: 8px 12px; cursor: pointer; border: none; background: #007bff; color: white; border-radius: 4px; }
-        button.eraser { background: #ffc107; color: black; }
-        button.clear { background: #dc3545; }
+        /* --- ✨ SMART LOGIN SCREEN --- */
+        #login-screen { display: flex; justify-content: center; align-items: center; height: 100vh; width: 100%; background: var(--dark-bg); }
+        .login-wrapper { display: flex; flex-direction: row; background: var(--dark-card); border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); width: 100%; max-width: 900px; min-height: 500px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); }
+
+        .login-left { background: linear-gradient(135deg, #3b82f6 0%, #0284c7 100%); width: 45%; padding: 50px; color: white; display: flex; flex-direction: column; justify-content: center; position: relative; }
+        .login-left h2 { font-size: 32px; font-weight: 700; margin-bottom: 20px; margin-top: 0; line-height: 1.2; }
+        .login-left p { font-size: 16px; line-height: 1.6; opacity: 0.9; margin-bottom: 30px; }
+        .illustration { font-size: 70px; text-align: center; margin-top: 20px; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.2)); }
+
+        .login-right { padding: 50px; width: 55%; color: var(--dark-text); display: flex; flex-direction: column; justify-content: center; }
+        .login-right h3 { font-size: 28px; font-weight: 700; margin-top: 0; margin-bottom: 25px; color: white; }
+
+        /* 🚀 Tabs UI */
+        .tab-container { display: flex; background: var(--dark-bg); padding: 6px; border-radius: 12px; margin-bottom: 25px; }
+        .tab-btn { flex: 1; padding: 12px; border: none; background: transparent; color: var(--dark-muted); font-size: 14px; font-weight: 600; border-radius: 8px; cursor: pointer; transition: 0.3s; }
+        .tab-btn.active { background: var(--dark-card); color: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+
+        .input-group { margin-bottom: 22px; text-align: left; }
+        .input-group label { display: block; margin-bottom: 10px; font-weight: 500; color: var(--dark-muted); font-size: 14px; }
+        .login-right input { width: 100%; padding: 15px 18px; background: var(--dark-input); border: 1px solid var(--dark-border); color: white; border-radius: 12px; font-size: 15px; transition: all 0.2s; outline: none; }
+        .login-right input::placeholder { color: #475569; }
+        .login-right input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.25); background: #1e293b; }
+
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; cursor: pointer; font-size: 15px; font-weight: 600; transition: all 0.2s; letter-spacing: 0.5px; color: white; margin-top: 10px; }
+        .btn-action { background: var(--primary); box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3); }
+        .btn-action:hover { background: var(--primary-hover); transform: translateY(-2px); }
+
+        /* --- BOARD AREA & HEADER --- */
+        #board-area { display: none; width: 100%; padding: 20px; max-width: 1400px; }
+        .header-bar { display: flex; justify-content: space-between; align-items: center; background: var(--surface); padding: 15px 25px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .brand-title { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: #1e293b; }
+        .brand-title span { background: #e0e7ff; color: var(--primary); padding: 4px 10px; border-radius: 8px; font-size: 14px; }
+
+        .header-info { display: flex; align-items: center; gap: 20px; font-size: 14px; font-weight: 600; color: #475569; }
+        .info-pill { background: #f8fafc; padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border); }
+        .role-badge { font-size: 11px; background: #fbbf24; color: #78350f; padding: 3px 8px; border-radius: 10px; margin-left: 8px; font-weight: 700; text-transform: uppercase; }
+
+        .leave-btn { background: #fee2e2; color: #ef4444; border: 1px solid #fca5a5; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.2s; display: flex; align-items: center; gap: 6px; }
+        .leave-btn:hover { background: #ef4444; color: white; }
+
+        /* --- TOOLBAR --- */
+        .toolbar { background: var(--surface); padding: 12px 24px; border-radius: 100px; display: inline-flex; align-items: center; gap: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .tool-group { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+        input[type="color"] { border: none; width: 32px; height: 32px; cursor: pointer; padding: 0; border-radius: 50%; overflow: hidden; }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
+        input[type="range"] { accent-color: var(--primary); }
+
+        button.tool-btn { padding: 8px 16px; cursor: pointer; border: 1px solid transparent; background: transparent; color: var(--text-main); border-radius: 20px; font-size: 14px; font-weight: 600; transition: 0.2s; display: flex; align-items: center; gap: 6px; }
+        button.tool-btn:hover { background: #f3f4f6; }
+        button.tool-btn.active { background: #e0e7ff; color: var(--primary); border-color: #c7d2fe; }
+        .divider-vertical { width: 1px; height: 24px; background: var(--border); }
+
+        /* --- WORKSPACE LAYOUT --- */
+        .workspace-container { display: flex; gap: 24px; justify-content: center; align-items: stretch; height: calc(100vh - 180px); min-height: 500px; }
+
+        #canvas-container { flex: 1; position: relative; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); border: 1px solid var(--border); }
+        canvas { background-color: #ffffff; cursor: crosshair; display: block; background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px); background-size: 25px 25px; }
+
+        /* --- CHAT UI --- */
+        #chat-container { width: 340px; background: var(--surface); border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border); }
+        .chat-header { background: var(--surface); padding: 16px; font-weight: 700; font-size: 15px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; color: #1e293b; }
+        #chat-messages { flex: 1; padding: 20px; overflow-y: auto; background: #f9fafb; display: flex; flex-direction: column; gap: 12px; }
+        .chat-wrapper { display: flex; flex-direction: column; max-width: 85%; }
+        .chat-wrapper.me { align-self: flex-end; align-items: flex-end; }
+        .chat-wrapper.other { align-self: flex-start; align-items: flex-start; }
+        .chat-sender { font-size: 11px; font-weight: 600; margin-bottom: 4px; color: var(--text-muted); padding: 0 4px; }
+        .chat-bubble { padding: 10px 14px; border-radius: 18px; font-size: 14px; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .chat-wrapper.me .chat-bubble { background: var(--primary); color: white; border-bottom-right-radius: 4px; }
+        .chat-wrapper.other .chat-bubble { background: white; color: var(--text-main); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+        .chat-input-area { display: flex; padding: 12px; background: var(--surface); border-top: 1px solid var(--border); gap: 8px; }
+        .chat-input-area input { flex: 1; padding: 12px 16px; border: 1px solid var(--border); border-radius: 24px; outline: none; font-size: 14px; background: #f9fafb; transition: 0.2s; }
+        .chat-input-area input:focus { border-color: var(--primary); background: white; }
+        .chat-input-area button { padding: 0 20px; background: var(--primary); color: white; border: none; border-radius: 24px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .chat-input-area button:hover { background: var(--primary-hover); }
+
+        .remote-cursor { position: absolute; pointer-events: none; font-size: 12px; font-weight: 600; color: white; background: var(--primary); padding: 4px 10px; border-radius: 12px; border-top-left-radius: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: top 0.1s, left 0.1s; transform: translate(5px, 5px); z-index: 100; }
+        #toast-container { position: fixed; top: 24px; right: 24px; z-index: 1000; display: flex; flex-direction: column; gap: 12px; }
+        .toast { background: #1e293b; color: white; padding: 14px 20px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2); display: flex; justify-content: space-between; align-items: center; min-width: 280px; font-size: 14px; font-weight: 500; animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; border-left: 4px solid var(--primary); }
+        .toast .close-btn { cursor: pointer; font-size: 18px; opacity: 0.7; transition: 0.2s; margin-left: 15px; }
+        .toast .close-btn:hover { opacity: 1; }
+        @keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     </style>
 </head>
 <body>
 
-<h2>🎨 Collaborative Whiteboard</h2>
+<div id="toast-container"></div>
 
-<div class="toolbar">
-    <div class="tool-group">
-        <label>Color</label>
-        <input type="color" id="colorPicker" value="#000000">
+<div id="login-screen">
+    <div class="login-wrapper">
+        <div class="login-left">
+            <h2>Welcome to ProBoard</h2>
+            <p>Your instant real-time collaborative whiteboard. Fast, low-friction, and securely backed by Redis & MySQL.</p>
+            <div class="illustration">📱👨‍💻</div>
+        </div>
+
+        <div class="login-right">
+            <h3>Start a Session</h3>
+
+            <div class="tab-container">
+                <button class="tab-btn active" id="tabCreate" onclick="switchMode('create')">Create Room</button>
+                <button class="tab-btn" id="tabJoin" onclick="switchMode('join')">Join Room</button>
+            </div>
+
+            <div class="input-group">
+                <label>Username</label>
+                <input type="text" id="userNameInput" placeholder="e.g. Saqib" required>
+            </div>
+
+            <div class="input-group" id="roomCodeGroup" style="display: none;">
+                <label>Room Code</label>
+                <input type="text" id="roomCodeInput" placeholder="Enter 6-digit code" style="text-transform: uppercase; letter-spacing: 2px;">
+            </div>
+
+            <button class="btn btn-action" id="actionBtn" onclick="handleAuthAction()">CREATE NEW ROOM</button>
+        </div>
     </div>
-
-    <div class="tool-group">
-        <label>Size</label>
-        <input type="range" id="brushSize" min="1" max="20" value="3">
-    </div>
-
-    <button class="eraser" onclick="setEraser()">🧽 Eraser</button>
-    <button class="clear" onclick="clearBoard()">🗑 Clear All</button>
 </div>
 
-<br>
-<canvas id="board" width="900" height="500"></canvas>
+<div id="board-area">
+    <div class="header-bar">
+        <div class="brand-title">✏️ ProBoard <span>Live</span></div>
+        <div class="header-info">
+            <div class="info-pill">👥 Online: <span id="userCountDisplay" style="color: var(--primary);">1</span></div>
+            <div class="info-pill">🔑 Room: <span id="displayRoomCode" style="color: var(--primary); user-select: all; letter-spacing: 1px;"></span></div>
+            <div class="info-pill">👤 <span id="displayUserName"></span><span id="roleBadge"></span></div>
+            <button class="leave-btn" onclick="leaveRoom()">🚪 End Session</button>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <div class="tool-group"><input type="color" id="colorPicker"></div>
+        <div class="divider-vertical"></div>
+        <div class="tool-group">Size <input type="range" id="brushSize" min="1" max="20" value="3"></div>
+        <div class="divider-vertical"></div>
+        <button class="tool-btn active" id="penBtn" onclick="setPen()">✏️ Pen</button>
+        <button class="tool-btn" id="eraserBtn" onclick="setEraser()">🧽 Eraser</button>
+        <div class="divider-vertical"></div>
+        <button id="clearBtn" class="tool-btn" onclick="clearBoard()" style="color: #ef4444;">🗑 Clear All</button>
+        <button class="tool-btn" onclick="downloadBoard()" style="color: #10b981;">⬇ Save PNG</button>
+    </div>
+
+    <div class="workspace-container">
+        <div id="canvas-container"><canvas id="board"></canvas></div>
+
+        <div id="chat-container">
+            <div class="chat-header">💬 Live Discussion</div>
+            <div id="chat-messages"></div>
+            <div class="chat-input-area">
+                <input type="text" id="chatInput" placeholder="Type a message..." onkeypress="handleEnter(event)">
+                <button onclick="sendChat()">Send</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
+    // --- 🚀 NEW DYNAMIC LOGIN LOGIC ---
+    let currentMode = 'create';
+
+    function switchMode(mode) {
+        currentMode = mode;
+        const codeGroup = document.getElementById('roomCodeGroup');
+        const actionBtn = document.getElementById('actionBtn');
+        const tabCreate = document.getElementById('tabCreate');
+        const tabJoin = document.getElementById('tabJoin');
+
+        if (mode === 'create') {
+            tabJoin.classList.remove('active');
+            tabCreate.classList.add('active');
+            codeGroup.style.display = 'none';
+            actionBtn.innerText = 'CREATE NEW ROOM';
+            actionBtn.style.backgroundColor = 'var(--primary)';
+        } else {
+            tabCreate.classList.remove('active');
+            tabJoin.classList.add('active');
+            codeGroup.style.display = 'block';
+            actionBtn.innerText = 'JOIN EXISTING ROOM';
+            actionBtn.style.backgroundColor = '#10b981'; // Green for join
+        }
+    }
+
+    function handleAuthAction() {
+        if (currentMode === 'create') {
+            createRoom();
+        } else {
+            joinRoom();
+        }
+    }
+
+    // --- STANDARD WEBSOCKET & CANVAS LOGIC ---
     var stompClient = null;
     var canvas = document.getElementById('board');
     var ctx = canvas.getContext('2d');
 
-    // State Variables
-    var isDrawing = false;
-    var lastX = 0;
-    var lastY = 0;
-    var currentColor = "#000000";
-    var currentWidth = 3;
+    function resizeCanvas() {
+        var container = document.getElementById('canvas-container');
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+    }
+    window.addEventListener('resize', () => {
+        if(document.getElementById('board-area').style.display === 'block') {}
+    });
 
-    // --- 1. Connection Logic ---
-    function connect() {
-        var socket = new SockJS('/ws');
-        stompClient = Stomp.over(socket);
+    var myName = ""; var roomCode = ""; var userRole = "GUEST";
+    var isDrawing = false; var lastX = 0; var lastY = 0;
+    var currentColor = "#3b82f6"; var currentWidth = 3;
+    var activeUsers = new Set();
+
+    window.onload = function() {
+        if (sessionStorage.getItem('savedRoomCode')) {
+            roomCode = sessionStorage.getItem('savedRoomCode');
+            myName = sessionStorage.getItem('savedName');
+            userRole = sessionStorage.getItem('savedRole');
+            enterWorkspace();
+        }
+    };
+
+    window.addEventListener('beforeunload', function () {
+        if(stompClient && stompClient.connected) { stompClient.send("/app/draw/" + roomCode, {}, JSON.stringify({ type: 'LEAVE', senderName: myName })); }
+    });
+
+    function leaveRoom() {
+        if(stompClient && stompClient.connected) {
+            stompClient.send("/app/draw/" + roomCode, {}, JSON.stringify({ type: 'LEAVE', senderName: myName }));
+            if (userRole === "HOST") { stompClient.send("/app/draw/" + roomCode, {}, JSON.stringify({ type: 'ARCHIVE', senderName: myName })); }
+        }
+        sessionStorage.clear();
+        if(stompClient) stompClient.disconnect();
+        window.location.reload();
+    }
+
+    function getRandomDarkColor() {
+        var colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef'];
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    function generateRoomCode() { return Math.random().toString(36).substring(2, 8).toUpperCase(); }
+
+    function createRoom() {
+        myName = document.getElementById('userNameInput').value.trim();
+        if(!myName) return showToast("Please enter your name!");
+        userRole = "HOST"; roomCode = generateRoomCode(); enterWorkspace();
+    }
+
+    function joinRoom() {
+        myName = document.getElementById('userNameInput').value.trim();
+        roomCode = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+        if(!myName || !roomCode) return showToast("Enter Name and Room Code!");
+        userRole = "GUEST"; enterWorkspace();
+    }
+
+    function enterWorkspace() {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('board-area').style.display = 'block';
+        resizeCanvas();
+        document.getElementById('displayRoomCode').innerText = roomCode;
+        document.getElementById('displayUserName').innerText = myName;
+
+        sessionStorage.setItem('savedRoomCode', roomCode); sessionStorage.setItem('savedName', myName); sessionStorage.setItem('savedRole', userRole);
+
+        currentColor = getRandomDarkColor(); document.getElementById('colorPicker').value = currentColor;
+
+        if (userRole === "GUEST") { document.getElementById('clearBtn').style.display = 'none'; }
+        else { document.getElementById('roleBadge').className = 'role-badge'; document.getElementById('roleBadge').innerText = 'HOST'; }
+
+        activeUsers.add(myName); updateUserCount(); connectToServer();
+    }
+
+    function connectToServer() {
+        var socket = new SockJS('/ws'); stompClient = Stomp.over(socket); stompClient.debug = null;
+
         stompClient.connect({}, function (frame) {
-            console.log('Connected');
-            stompClient.subscribe('/topic/board', function (message) {
-                var payload = JSON.parse(message.body);
-                drawOnCanvas(payload);
+            stompClient.subscribe('/topic/board/' + roomCode, function (message) { handleIncomingMessage(JSON.parse(message.body)); });
+            stompClient.subscribe('/app/history/' + roomCode, function (message) {
+                JSON.parse(message.body).forEach(item => {
+                    if (item.type === 'CHAT') { displayChatMessage(item.senderName, item.text); }
+                    else if (item.type === 'draw' || item.type === 'clear') { drawOnCanvas(item); }
+                });
             });
+            if(stompClient && stompClient.connected) { stompClient.send("/app/draw/" + roomCode, {}, JSON.stringify({ type: 'JOIN', senderName: myName })); }
         });
     }
 
-    // --- 2. Drawing Events (Mouse + Touch for Mobile) ---
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('mouseout', stopDrawing);
+    function handleIncomingMessage(data) {
+        if (data.type === 'JOIN') {
+            if (data.senderName !== myName) {
+                if (!activeUsers.has(data.senderName)) { showToast("👋 " + data.senderName + " joined"); }
+                activeUsers.add(data.senderName); updateUserCount();
+                stompClient.send("/app/draw/" + roomCode, {}, JSON.stringify({ type: 'PRESENT', senderName: myName }));
+            }
+        }
+        else if (data.type === 'PRESENT') {
+            if (data.senderName !== myName && !activeUsers.has(data.senderName)) { activeUsers.add(data.senderName); updateUserCount(); }
+        }
+        else if (data.type === 'LEAVE') {
+            if (activeUsers.has(data.senderName)) {
+                activeUsers.delete(data.senderName); updateUserCount(); showToast("🚪 " + data.senderName + " left");
+                var cursorEl = document.getElementById("cursor-" + data.senderName.replace(/\s/g, ''));
+                if(cursorEl) cursorEl.remove();
+            }
+        }
+        else if (data.type === 'ARCHIVE') {
+            if (userRole === "GUEST") {
+                alert("Teacher (Host) ne class end kar di hai. Session is archived.");
+                sessionStorage.clear(); if(stompClient) stompClient.disconnect(); window.location.reload();
+            }
+        }
+        else if (data.type === 'CHAT') { displayChatMessage(data.senderName, data.text); }
+        else if (data.type === 'cursor') { updateRemoteCursor(data); }
+        else if (data.type === 'draw' || data.type === 'clear') { drawOnCanvas(data); }
+    }
+
+    function handleEnter(e) { if(e.key === 'Enter') sendChat(); }
+
+    function sendChat() {
+        var inputObj = document.getElementById('chatInput'); var textMsg = inputObj.value.trim();
+        if(!textMsg) return;
+        if(stompClient && stompClient.connected) {
+            stompClient.send("/app/draw/" + roomCode, {}, JSON.stringify({ type: 'CHAT', senderName: myName, text: textMsg }));
+            inputObj.value = '';
+        }
+    }
+
+    function displayChatMessage(sender, text) {
+        var chatBox = document.getElementById('chat-messages');
+        var wrapper = document.createElement('div'); wrapper.className = (sender === myName) ? 'chat-wrapper me' : 'chat-wrapper other';
+        var senderName = document.createElement('div'); senderName.className = 'chat-sender'; senderName.innerText = (sender === myName) ? 'You' : sender;
+        var bubble = document.createElement('div'); bubble.className = 'chat-bubble'; bubble.innerText = text;
+
+        wrapper.appendChild(senderName); wrapper.appendChild(bubble); chatBox.appendChild(wrapper);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function updateUserCount() { document.getElementById('userCountDisplay').innerText = activeUsers.size; }
+
+    function showToast(message) {
+        var container = document.getElementById('toast-container');
+        var toast = document.createElement('div'); toast.className = 'toast';
+        toast.innerHTML = `<span>${message}</span><span class="close-btn" onclick="this.parentElement.remove()">×</span>`;
+        container.appendChild(toast); setTimeout(() => { if(toast.parentElement) toast.remove(); }, 4000);
+    }
+
+    function updateRemoteCursor(data) {
+        if (data.senderName === myName) return;
+        var cursorId = "cursor-" + data.senderName.replace(/\s/g, ''); var cursorEl = document.getElementById(cursorId);
+        if (!cursorEl) {
+            cursorEl = document.createElement('div'); cursorEl.id = cursorId; cursorEl.className = 'remote-cursor';
+            cursorEl.innerText = data.senderName; document.getElementById('canvas-container').appendChild(cursorEl);
+        }
+        cursorEl.style.left = data.newX + 'px'; cursorEl.style.top = data.newY + 'px';
+        clearTimeout(cursorEl.hideTimer); cursorEl.style.opacity = 1;
+        cursorEl.hideTimer = setTimeout(() => { cursorEl.style.opacity = 0; }, 2000);
+    }
+
+    canvas.addEventListener('mousedown', startDrawing); canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('mouseup', stopDrawing); canvas.addEventListener('mouseout', stopDrawing);
 
     function startDrawing(e) {
-        isDrawing = true;
-        [lastX, lastY] = [e.offsetX, e.offsetY]; // Start point save karo
+        isDrawing = true; const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width; const scaleY = canvas.height / rect.height;
+        lastX = (e.clientX - rect.left) * scaleX; lastY = (e.clientY - rect.top) * scaleY;
     }
 
-    function draw(e) {
-        if (!isDrawing) return;
+    function handleMouseMove(e) {
+        const rect = canvas.getBoundingClientRect(); const scaleX = canvas.width / rect.width; const scaleY = canvas.height / rect.height;
+        let currentX = (e.clientX - rect.left) * scaleX; let currentY = (e.clientY - rect.top) * scaleY;
+        if (isDrawing) { sendData('draw', lastX, lastY, currentX, currentY); lastX = currentX; lastY = currentY; }
+        else { sendData('cursor', 0, 0, currentX, currentY); }
+    }
 
-        // Naya point
-        let newX = e.offsetX;
-        let newY = e.offsetY;
+    function stopDrawing() { isDrawing = false; }
 
-        // Server ko bhejo: "Main Old(x,y) se New(x,y) tak gaya"
-        var drawData = {
-            'type': 'draw',
-            'oldX': lastX,
-            'oldY': lastY,
-            'newX': newX,
-            'newY': newY,
-            'color': currentColor,
-            'width': currentWidth
-        };
-
+    function sendData(type, oX, oY, nX, nY) {
         if(stompClient && stompClient.connected) {
-            stompClient.send("/app/draw", {}, JSON.stringify(drawData));
+            stompClient.send("/app/draw/" + roomCode, {}, JSON.stringify({
+                'type': type, 'senderName': myName, 'oldX': oX, 'oldY': oY, 'newX': nX, 'newY': nY, 'color': currentColor, 'width': currentWidth
+            }));
         }
-
-        // Local coordinates update karo agle step ke liye
-        [lastX, lastY] = [newX, newY];
     }
 
-    function stopDrawing() {
-        isDrawing = false;
-    }
-
-    // --- 3. Rendering Logic (Receiver) ---
     function drawOnCanvas(data) {
-        if (data.type === 'clear') {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        } else {
-            ctx.beginPath();
-            ctx.moveTo(data.oldX, data.oldY); // Yahan se shuru
-            ctx.lineTo(data.newX, data.newY); // Yahan tak line
-            ctx.strokeStyle = data.color;
-            ctx.lineWidth = data.width;
-            ctx.lineCap = 'round'; // Smooth edges
-            ctx.stroke();
+        if (data.type === 'clear') { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+        else if (data.type === 'draw') {
+            ctx.beginPath(); ctx.moveTo(data.oldX, data.oldY); ctx.lineTo(data.newX, data.newY);
+            ctx.strokeStyle = data.color; ctx.lineWidth = data.width; ctx.lineCap = 'round'; ctx.stroke();
         }
     }
 
-    // --- 4. Tool Functions ---
-    document.getElementById('colorPicker').addEventListener('change', (e) => {
-        currentColor = e.target.value;
-    });
+    document.getElementById('colorPicker').addEventListener('change', (e) => { currentColor = e.target.value; currentWidth = document.getElementById('brushSize').value; });
+    document.getElementById('brushSize').addEventListener('change', (e) => { currentWidth = e.target.value; });
 
-    document.getElementById('brushSize').addEventListener('change', (e) => {
-        currentWidth = e.target.value;
-    });
+    function setPen() { currentColor = document.getElementById('colorPicker').value; currentWidth = document.getElementById('brushSize').value; document.getElementById('penBtn').classList.add('active'); document.getElementById('eraserBtn').classList.remove('active'); }
+    function setEraser() { currentColor = "#FFFFFF"; currentWidth = 25; document.getElementById('eraserBtn').classList.add('active'); document.getElementById('penBtn').classList.remove('active'); }
+    function clearBoard() { if(userRole === "HOST") { sendData('clear', 0, 0, 0, 0); } }
 
-    function setEraser() {
-        currentColor = "#FFFFFF"; // Eraser = White color paint
-        currentWidth = 10;        // Eraser bada hona chahiye
+    function downloadBoard() {
+        var tempCanvas = document.createElement('canvas'); tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
+        var tCtx = tempCanvas.getContext('2d'); tCtx.fillStyle = '#FFFFFF'; tCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height); tCtx.drawImage(canvas, 0, 0);
+        var link = document.createElement('a'); link.download = 'ProBoard-' + roomCode + '.png'; link.href = tempCanvas.toDataURL("image/png"); link.click();
     }
-
-    function clearBoard() {
-        if(stompClient) {
-            stompClient.send("/app/draw", {}, JSON.stringify({ 'type': 'clear' }));
-        }
-    }
-
-    connect();
 </script>
 </body>
 </html>
