@@ -4,13 +4,15 @@ import lombok.Data;
 
 @Data
 public class DrawMessage {
-    private String type;   // "draw", "clear", "start"
-    private String color;  // Hex code (e.g., "#FF0000")
-    private int width;     // Brush thickness
+    private String type;       // "draw", "clear", "cursor", "JOIN", ya "CHAT"
+    private String senderName;
+    private String color;
+    private int width;
 
-    // Naya Coordinate System (Line banane ke liye)
     private int oldX;
     private int oldY;
     private int newX;
     private int newY;
+
+    private String text;       // Chat messages ke liye
 }
