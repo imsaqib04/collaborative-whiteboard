@@ -78,5 +78,7 @@ public class WhiteboardController {
         List<DrawMessage> history = redisTemplate.opsForList().range(redisKey, 0, -1);
         return history != null ? history : new ArrayList<>();
     }
+
+
 }
 

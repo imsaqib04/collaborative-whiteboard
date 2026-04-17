@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProBoard Live - Fullscreen Workspace</title>
+    <title>SketchFlow - Fullscreen Workspace</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
@@ -116,7 +116,7 @@
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         .remote-cursor { position: absolute; pointer-events: none; font-size: 11px; font-weight: 600; color: white; background: var(--primary); padding: 3px 8px; border-radius: 10px; border-top-left-radius: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: top 0.1s, left 0.1s; transform: translate(5px, 5px); z-index: 100; }
 
-        #toast-container { position: fixed; top: 70px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
+      #toast-container { position: fixed; top: 20px; right: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; }
         .toast { background: #1e293b; color: white; padding: 12px 16px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; justify-content: space-between; align-items: center; min-width: 240px; font-size: 13px; font-weight: 500; animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; border-left: 3px solid var(--primary); }
         .toast .close-btn { cursor: pointer; font-size: 16px; opacity: 0.7; margin-left: 10px; }
         @keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
@@ -129,7 +129,7 @@
 <div id="login-screen">
     <div class="login-wrapper">
         <div class="login-left">
-            <h2>ProBoard Live</h2>
+            <h2>SketchFlow</h2>
             <p>Fast, low-friction, and securely backed by Redis & MySQL.</p>
             <div class="illustration">📱👨‍💻</div>
         </div>
@@ -154,7 +154,7 @@
 
 <div id="board-area">
     <div class="top-bar">
-        <div class="brand-section">✏️ ProBoard <span class="live">Live</span></div>
+        <div class="brand-section">✏️ SketchFlow <span class="live">Live</span></div>
         <div class="tools-section">
             <input type="color" id="colorPicker" title="Color">
             <div class="divider-vertical"></div>
@@ -247,13 +247,17 @@
         if(stompClient && stompClient.connected) { stompClient.send("/app/draw/" + roomCode, {}, JSON.stringify({ type: 'LEAVE', senderName: myName })); }
     });
 
-    function leaveRoom() {
-        if(stompClient && stompClient.connected) {
+ function leaveRoom() {
+        if (stompClient && stompClient.connected) {
             stompClient.send("/app/draw/" + roomCode, {}, JSON.stringify({ type: 'LEAVE', senderName: myName }));
-            if (userRole === "HOST") { stompClient.send("/app/draw/" + roomCode, {}, JSON.stringify({ type: 'ARCHIVE', senderName: myName })); }
+            if (userRole === "HOST") {
+                stompClient.send("/app/draw/" + roomCode, {}, JSON.stringify({ type: 'ARCHIVE', senderName: myName }));
+                fetch('/api/room/end/' + roomCode, { method: 'DELETE' });
+            }
         }
+
         sessionStorage.clear();
-        if(stompClient) stompClient.disconnect();
+        if (stompClient) stompClient.disconnect();
         window.location.reload();
     }
 
@@ -263,19 +267,45 @@
     }
 
     function generateRoomCode() { return Math.random().toString(36).substring(2, 8).toUpperCase(); }
+// 🔥 NAYA CREATE ROOM FUNCTION
+async function createRoom() {
+    myName = document.getElementById('userNameInput').value.trim();
+    if(!myName) return showToast("Please enter your name!");
 
-    function createRoom() {
-        myName = document.getElementById('userNameInput').value.trim();
-        if(!myName) return showToast("Please enter your name!");
-        userRole = "HOST"; roomCode = generateRoomCode(); enterWorkspace();
-    }
+    userRole = "HOST";
+    roomCode = generateRoomCode();
 
-    function joinRoom() {
-        myName = document.getElementById('userNameInput').value.trim();
-        roomCode = document.getElementById('roomCodeInput').value.trim().toUpperCase();
-        if(!myName || !roomCode) return showToast("Enter Name and Room Code!");
-        userRole = "GUEST"; enterWorkspace();
+    try {
+        // Backend ko batao ki naya room ban gaya hai
+        await fetch('/api/room/create/' + roomCode, { method: 'POST' });
+        enterWorkspace();
+    } catch(err) {
+        showToast("Server Error: Cannot create room.");
     }
+}
+
+// 🔥 NAYA JOIN ROOM FUNCTION (The Real Fix)
+async function joinRoom() {
+    myName = document.getElementById('userNameInput').value.trim();
+    roomCode = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+    if(!myName || !roomCode) return showToast("Enter Name and Room Code!");
+
+    try {
+        // Backend se pucho ki kya ye room sach mein hai?
+        let response = await fetch('/api/room/check/' + roomCode);
+        let roomExists = await response.json(); // Ye true ya false aayega
+
+        if(roomExists) {
+            userRole = "GUEST";
+            enterWorkspace(); // Room hai toh andar jao
+        } else {
+            // Room nahi hai toh ERROR dikhao aur andar mat jaane do!
+            showToast("❌ Invalid Room Code!");
+        }
+    } catch(err) {
+        showToast("Server Error: Cannot connect to backend.");
+    }
+}
 
     function enterWorkspace() {
         document.getElementById('login-screen').style.display = 'none';
@@ -423,12 +453,34 @@
     }
 
     function drawOnCanvas(data) {
-        if (data.type === 'clear') { ctx.clearRect(0, 0, canvas.width, canvas.height); }
-        else if (data.type === 'draw') {
-            ctx.beginPath(); ctx.moveTo(data.oldX, data.oldY); ctx.lineTo(data.newX, data.newY);
-            ctx.strokeStyle = data.color; ctx.lineWidth = data.width; ctx.lineCap = 'round'; ctx.stroke();
-        }
+    if (data.type === 'clear') {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
+    else if (data.type === 'draw') {
+        ctx.beginPath();
+        ctx.moveTo(data.oldX, data.oldY);
+        ctx.lineTo(data.newX, data.newY);
+
+        // 🔥 THE ERASER MAGIC FIX 🔥
+        if (data.color === "#FFFFFF") {
+            // Agar color white hai, matlab user eraser use kar raha hai
+            ctx.globalCompositeOperation = "destination-out"; // Ye pixel gayab karega (Erase)
+            ctx.strokeStyle = "rgba(0,0,0,1)"; // Cut out karne ke liye dark base
+        } else {
+            // Normal Pen Drawing
+            ctx.globalCompositeOperation = "source-over";
+            ctx.strokeStyle = data.color;
+        }
+
+        ctx.lineWidth = data.width;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round'; // Isse line ke edges ekdum smooth (makhhan) aayenge
+        ctx.stroke();
+
+        // Stroke complete hone ke baad wapas normal drawing mode par set kar do
+        ctx.globalCompositeOperation = "source-over";
+    }
+}
 
     document.getElementById('colorPicker').addEventListener('change', (e) => { currentColor = e.target.value; currentWidth = document.getElementById('brushSize').value; });
     document.getElementById('brushSize').addEventListener('change', (e) => { currentWidth = e.target.value; });
